@@ -1,0 +1,89 @@
+// NetX Hub — modelo de dados do licenciamento (lado NetX/nós).
+// Postgres próprio do Hub, separado do banco de cada NetX cliente.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LicenseStatus {
+  ACTIVE
+  BLOCKED
+  SUSPENDED
+}
+
+enum BlockMode {
+  UI_ONLY            // bloqueia o painel de operador (padrão)
+  UI_AND_PROVISIONING // + bloqueia ativar clientes novos
+}
+
+/// Licenciado = a empresa (ISP) que contratou o NetX. Plano e faturamento
+/// vivem aqui; pode ter mais de uma instância (ex.: produção + staging).
+model Licensee {
+  id           String     @id @default(uuid())
+  name         String
+  taxId        String?    @map("tax_id") // CNPJ/RUC
+  contactEmail String?    @map("contact_email")
+  /// Rótulo do plano (ex.: "per-contract").
+  plan         String     @default("per-contract")
+  /// Teto de contratos ativos (0 = ilimitado). Informativo no cliente.
+  maxContracts Int        @default(0) @map("max_contracts")
+  /// Valor por contrato ativo (centavos) — base do faturamento por uso.
+  pricePerContractCents Int @default(0) @map("price_per_contract_cents")
+  notes        String?
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  instances    Instance[]
+
+  @@map("licensees")
+}
+
+/// Instância = uma instalação do NetX numa VPS. `id` é o NETX_INSTANCE_ID
+/// gerado no enrollment do installer (= claim `sub` do token).
+model Instance {
+  id           String        @id // = NETX_INSTANCE_ID (uuid gerado no cliente)
+  licenseeId   String        @map("licensee_id")
+  label        String?       // ex.: "Produção PY"
+  /// sha256(licenseKey) em hex. A key em claro é mostrada 1x na criação.
+  keyHash      String        @unique @map("key_hash")
+
+  status       LicenseStatus @default(ACTIVE)
+  blockMode    BlockMode     @default(UI_ONLY) @map("block_mode")
+
+  // Telemetria do último heartbeat
+  lastVersion         String?   @map("last_version")
+  lastActiveContracts Int?      @map("last_active_contracts")
+  lastHeartbeatAt     DateTime? @map("last_heartbeat_at")
+  lastIp              String?   @map("last_ip")
+
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  licensee     Licensee      @relation(fields: [licenseeId], references: [id], onDelete: Cascade)
+  heartbeats   HeartbeatLog[]
+
+  @@index([licenseeId])
+  @@index([status])
+  @@map("instances")
+}
+
+/// Histórico de heartbeats — base pra faturamento por contrato ativo e
+/// auditoria de contato. Uma linha por heartbeat recebido.
+model HeartbeatLog {
+  id              String   @id @default(uuid())
+  instanceId      String   @map("instance_id")
+  version         String?
+  activeContracts Int      @default(0) @map("active_contracts")
+  ip              String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  instance        Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@index([instanceId, createdAt])
+  @@map("heartbeat_logs")
+}

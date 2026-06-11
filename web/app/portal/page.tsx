@@ -6,6 +6,37 @@ import { useEffect, useState } from 'react';
 import { portalApi, portalToken, date, money, HubApiError } from '@/lib/api';
 import { Badge, Card } from '@/components/ui';
 
+function PixModal({ pix, onClose }: { pix: any; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-lg bg-white p-5 text-center shadow-xl">
+        <h2 className="text-lg font-semibold">Pague com Pix</h2>
+        <p className="mb-3 text-sm text-slate-500">{money(pix.amountCents, pix.currency)}</p>
+        {pix.qrImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={pix.qrImage} alt="QR Code Pix" className="mx-auto mb-3 h-48 w-48" />
+        )}
+        {pix.pixCopiaECola && (
+          <>
+            <textarea readOnly value={pix.pixCopiaECola} className="h-20 w-full rounded-md border border-slate-300 p-2 text-xs" />
+            <button
+              onClick={() => { void navigator.clipboard?.writeText(pix.pixCopiaECola); setCopied(true); }}
+              className="mt-2 w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white"
+            >
+              {copied ? 'Copiado ✓' : 'Copiar código Pix'}
+            </button>
+          </>
+        )}
+        <p className="mt-3 text-xs text-slate-400">
+          A baixa é automática ao confirmar o pagamento. Expira em {date(pix.expiresAt)}.
+        </p>
+        <button onClick={onClose} className="mt-3 text-sm text-slate-500 hover:underline">Fechar</button>
+      </div>
+    </div>
+  );
+}
+
 export default function PortalHome() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
@@ -13,6 +44,7 @@ export default function PortalHome() {
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pix, setPix] = useState<any>(null);
 
   async function load() {
     try {
@@ -51,9 +83,10 @@ export default function PortalHome() {
   async function pay(inv: any) {
     setBusy(true);
     try {
-      await portalApi.pay(inv.id, 'PIX');
+      const charge = await portalApi.pay(inv.id, 'PIX');
+      setPix({ ...charge, amountCents: inv.amountCents, currency: inv.currency });
     } catch (e) {
-      // Por ora o pagamento online é stub (EFI na 3C) — mostra a orientação.
+      // EFI não configurada → mensagem orientando pagamento por fora.
       flash(e instanceof HubApiError ? e.message : 'Pagamento indisponível.');
     } finally {
       setBusy(false);
@@ -81,6 +114,8 @@ export default function PortalHome() {
       </header>
 
       {msg && <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{msg}</p>}
+
+      {pix && <PixModal pix={pix} onClose={() => { setPix(null); void load(); }} />}
 
       {/* Situação */}
       <div className="mb-5">

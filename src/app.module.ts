@@ -3,6 +3,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 
 import { AdminModule } from './admin/admin.module';
 import { BillingModule } from './billing/billing.module';
+import { EfiModule } from './efi/efi.module';
 import { HealthController } from './health.controller';
 import { InstancesModule } from './instances/instances.module';
 import { PaymentModule } from './payments/payment.module';
@@ -15,6 +16,7 @@ import { SigningModule } from './signing/signing.module';
     ScheduleModule.forRoot(),
     PrismaModule,
     SigningModule,
+    EfiModule,
     PaymentModule,
     BillingModule,
     InstancesModule,

@@ -90,7 +90,20 @@ npm run dev                   # sobe em :4000
   que haja desbloqueio em confiança vigente).
 - **Desbloqueio em confiança**: a central libera por `TRUST_UNLOCK_DAYS`,
   no máximo `TRUST_UNLOCK_MAX_PER_INVOICE` por fatura em atraso.
-- Pagamento online (EFI) entra na Fase 3C; por ora o admin dá baixa manual.
+## Pagamento Pix (EFI)
+
+Pix imediato via EFI (mTLS com certificado .p12). Configure no `.env`:
+`EFI_ENABLED=true`, `EFI_CLIENT_ID/SECRET`, `EFI_CERTIFICATE_BASE64` (+senha),
+`EFI_PIX_KEY`, `HUB_PUBLIC_URL`, `EFI_WEBHOOK_TOKEN`.
+
+- Central → "Pagar" → cria cobrança Pix (`POST /v1/portal/pay`) e mostra
+  copia-e-cola + QR. Idempotente: reusa a cobrança vigente.
+- **Baixa automática**: a EFI chama `POST /v1/efi/webhook/pix/<EFI_WEBHOOK_TOKEN>`;
+  o Hub acha a fatura pelo `txid` e marca como paga → o cliente sai do bloqueio
+  no próximo heartbeat. Registre o webhook na EFI apontando pra essa URL
+  (proteja com mTLS no proxy).
+- `EFI_ENABLED=false` (padrão) → "Pagar" recusa com orientação; admin dá baixa
+  manual (`mark-paid`). O resto do sistema funciona igual.
 
 ## Teste de compatibilidade
 

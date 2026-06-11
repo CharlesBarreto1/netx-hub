@@ -93,10 +93,10 @@ export class PortalService {
     return this.trust.grant(licenseeId, email);
   }
 
-  /** Inicia pagamento de uma fatura (stub até a Fase 3C / EFI). */
+  /** Inicia pagamento Pix de uma fatura (EFI). */
   async pay(licenseeId: string, invoiceId: string, method: 'PIX' | 'CARD') {
     const inv = await this.prisma.invoice.findFirst({ where: { id: invoiceId, licenseeId } });
     if (!inv) throw new UnauthorizedException('fatura não encontrada');
-    return this.payments.createCharge(invoiceId, method);
+    return this.payments.createPixCharge(invoiceId, method);
   }
 }

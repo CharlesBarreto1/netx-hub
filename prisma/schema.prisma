@@ -102,8 +102,14 @@ model Invoice {
   paidAt          DateTime?     @map("paid_at")
   paidAmountCents Int?          @map("paid_amount_cents")
   paymentMethod   String?       @map("payment_method") // PIX | CARD | MANUAL
-  paymentRef      String?       @map("payment_ref")    // txid/charge id do gateway
+  paymentRef      String?       @map("payment_ref")    // e2eid/charge id do gateway
   proofStorageKey String?       @map("proof_storage_key")
+
+  // Cobrança Pix (EFI) vigente desta fatura — pra idempotência e match do webhook.
+  pixTxid         String?       @unique @map("pix_txid")
+  pixCopiaECola   String?       @map("pix_copia_e_cola")
+  pixQrImage      String?       @map("pix_qr_image") @db.Text
+  pixExpiresAt    DateTime?     @map("pix_expires_at")
 
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")

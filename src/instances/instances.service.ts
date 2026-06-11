@@ -1,5 +1,6 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 
+import { BillingService } from '../billing/billing.service';
 import { sha256Hex } from '../common/hash';
 import { PrismaService } from '../prisma/prisma.service';
 import { SigningService } from '../signing/signing.service';
@@ -22,6 +23,7 @@ export class InstancesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly signing: SigningService,
+    private readonly billing: BillingService,
   ) {}
 
   async heartbeat(
@@ -62,9 +64,16 @@ export class InstancesService {
       }),
     ]);
 
+    // Status efetivo = bloqueio do admin (instance.status) tem prioridade;
+    // senão, inadimplência (fatura vencida sem desbloqueio em confiança) bloqueia.
+    let effectiveStatus = instance.status;
+    if (effectiveStatus === 'ACTIVE' && (await this.billing.isDelinquent(instance.licenseeId))) {
+      effectiveStatus = 'BLOCKED';
+    }
+
     const { token } = this.signing.issue({
       instanceId: instance.id,
-      status: instance.status,
+      status: effectiveStatus,
       blockMode: instance.blockMode,
       plan: instance.licensee.plan,
       maxContracts: instance.licensee.maxContracts,

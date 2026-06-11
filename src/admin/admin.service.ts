@@ -1,16 +1,41 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { BillingService } from '../billing/billing.service';
 import { generateLicenseKey, sha256Hex } from '../common/hash';
+import { hashPassword } from '../common/password';
 import { PrismaService } from '../prisma/prisma.service';
-import type { CreateInstance, CreateLicensee, SetStatus } from './admin.dto';
+import type {
+  CreateHubUser,
+  CreateInstance,
+  LicenseeData,
+  MarkPaid,
+  SetStatus,
+  UpdateLicensee,
+} from './admin.dto';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly billing: BillingService,
+  ) {}
 
   // ── Licenciados ───────────────────────────────────────────────────────────
-  createLicensee(input: CreateLicensee) {
+  createLicensee(input: LicenseeData) {
     return this.prisma.licensee.create({ data: input });
+  }
+
+  async updateLicensee(id: string, input: UpdateLicensee) {
+    const exists = await this.prisma.licensee.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException('Licenciado não encontrado');
+    return this.prisma.licensee.update({ where: { id }, data: input });
+  }
+
+  getLicensee(id: string) {
+    return this.prisma.licensee.findUnique({
+      where: { id },
+      include: { instances: true, users: { select: { id: true, email: true, name: true, isActive: true, lastLoginAt: true } } },
+    });
   }
 
   listLicensees() {
@@ -18,6 +43,50 @@ export class AdminService {
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { instances: true } } },
     });
+  }
+
+  // ── Usuários da central ─────────────────────────────────────────────────────
+  async createHubUser(input: CreateHubUser) {
+    const lic = await this.prisma.licensee.findUnique({ where: { id: input.licenseeId } });
+    if (!lic) throw new NotFoundException('Licenciado não encontrado');
+    const email = input.email.toLowerCase();
+    const dupe = await this.prisma.hubUser.findUnique({ where: { email } });
+    if (dupe) throw new ConflictException('E-mail já cadastrado');
+    const user = await this.prisma.hubUser.create({
+      data: {
+        licenseeId: input.licenseeId,
+        email,
+        name: input.name ?? null,
+        passwordHash: hashPassword(input.password),
+      },
+    });
+    return { id: user.id, email: user.email };
+  }
+
+  // ── Faturas ──────────────────────────────────────────────────────────────────
+  listInvoices(licenseeId?: string) {
+    return this.prisma.invoice.findMany({
+      where: licenseeId ? { licenseeId } : {},
+      orderBy: { issuedAt: 'desc' },
+      include: { licensee: { select: { id: true, name: true } } },
+    });
+  }
+
+  /** Gera (ou retorna) a fatura do mês anterior pra um licenciado — sob demanda. */
+  async generateInvoiceNow(licenseeId: string) {
+    const lic = await this.prisma.licensee.findUnique({ where: { id: licenseeId } });
+    if (!lic) throw new NotFoundException('Licenciado não encontrado');
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    return this.billing.generateInvoice(lic, periodStart, periodEnd);
+  }
+
+  async markInvoicePaid(invoiceId: string, input: MarkPaid) {
+    const inv = await this.prisma.invoice.findUnique({ where: { id: invoiceId } });
+    if (!inv) throw new NotFoundException('Fatura não encontrada');
+    await this.billing.markPaid(invoiceId, input);
+    return { id: invoiceId, status: 'PAID' };
   }
 
   // ── Instâncias ──────────────────────────────────────────────────────────────

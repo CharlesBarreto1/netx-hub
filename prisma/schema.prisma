@@ -21,26 +21,120 @@ enum BlockMode {
   UI_AND_PROVISIONING // + bloqueia ativar clientes novos
 }
 
+enum InvoiceStatus {
+  OPEN
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
 /// Licenciado = a empresa (ISP) que contratou o NetX. Plano e faturamento
 /// vivem aqui; pode ter mais de uma instância (ex.: produção + staging).
 model Licensee {
   id           String     @id @default(uuid())
   name         String
   taxId        String?    @map("tax_id") // CNPJ/RUC
+  taxIdType    String?    @map("tax_id_type") // CNPJ | RUC | ...
   contactEmail String?    @map("contact_email")
+  phone        String?
+  addressLine  String?    @map("address_line")
+  city         String?
+  state        String?
+  country      String     @default("BR")
+  currency     String     @default("BRL")
+
   /// Rótulo do plano (ex.: "per-contract").
   plan         String     @default("per-contract")
   /// Teto de contratos ativos (0 = ilimitado). Informativo no cliente.
   maxContracts Int        @default(0) @map("max_contracts")
   /// Valor por contrato ativo (centavos) — base do faturamento por uso.
   pricePerContractCents Int @default(0) @map("price_per_contract_cents")
+  /// Dia de vencimento das faturas mensais (1–28).
+  billingDay   Int        @default(10) @map("billing_day")
+  /// Cobrança ativa? (false = não gera fatura nem bloqueia — cortesia/trial)
+  billingActive Boolean   @default(true) @map("billing_active")
+
   notes        String?
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
   instances    Instance[]
+  users        HubUser[]
+  invoices     Invoice[]
+  trustUnlocks TrustUnlock[]
 
   @@map("licensees")
+}
+
+/// Usuário da central do cliente (staff do ISP). Login e-mail+senha.
+model HubUser {
+  id           String   @id @default(uuid())
+  licenseeId   String   @map("licensee_id")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  isActive     Boolean  @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  licensee     Licensee @relation(fields: [licenseeId], references: [id], onDelete: Cascade)
+
+  @@index([licenseeId])
+  @@map("hub_users")
+}
+
+/// Fatura mensal de um licenciado (por contrato ativo × preço).
+model Invoice {
+  id              String        @id @default(uuid())
+  licenseeId      String        @map("licensee_id")
+  /// Período cobrado (mês de referência).
+  periodStart     DateTime      @map("period_start")
+  periodEnd       DateTime      @map("period_end")
+  /// Snapshot da base de cálculo.
+  activeContracts Int           @map("active_contracts")
+  unitPriceCents  Int           @map("unit_price_cents")
+  amountCents     Int           @map("amount_cents")
+  currency        String        @default("BRL")
+  dueDate         DateTime      @map("due_date")
+  status          InvoiceStatus @default(OPEN)
+  issuedAt        DateTime      @default(now()) @map("issued_at")
+
+  paidAt          DateTime?     @map("paid_at")
+  paidAmountCents Int?          @map("paid_amount_cents")
+  paymentMethod   String?       @map("payment_method") // PIX | CARD | MANUAL
+  paymentRef      String?       @map("payment_ref")    // txid/charge id do gateway
+  proofStorageKey String?       @map("proof_storage_key")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  licensee        Licensee      @relation(fields: [licenseeId], references: [id], onDelete: Cascade)
+  trustUnlocks    TrustUnlock[]
+
+  @@unique([licenseeId, periodStart])
+  @@index([licenseeId, status])
+  @@index([status, dueDate])
+  @@map("invoices")
+}
+
+/// Desbloqueio em confiança: o cliente bloqueado por atraso libera por um
+/// prazo curto, em autoatendimento, limitado por fatura. Enquanto
+/// grantedUntil > agora, o heartbeat trata como ACTIVE apesar da inadimplência.
+model TrustUnlock {
+  id           String   @id @default(uuid())
+  licenseeId   String   @map("licensee_id")
+  invoiceId    String?  @map("invoice_id")
+  grantedUntil DateTime @map("granted_until")
+  /// Quem disparou (e-mail do HubUser) — auditoria.
+  grantedBy    String?  @map("granted_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  licensee     Licensee @relation(fields: [licenseeId], references: [id], onDelete: Cascade)
+  invoice      Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([licenseeId, grantedUntil])
+  @@index([invoiceId])
+  @@map("trust_unlocks")
 }
 
 /// Instância = uma instalação do NetX numa VPS. `id` é o NETX_INSTANCE_ID

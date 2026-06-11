@@ -52,16 +52,45 @@ npm run dev                   # sobe em :4000
 
 ## Endpoints
 
+**Cliente (NetX):**
 | Método | Rota | Auth | Função |
 |---|---|---|---|
-| POST | `/v1/instances/heartbeat` | Bearer licenseKey | cliente renova token + envia telemetria |
-| POST | `/v1/admin/licensees` | x-admin-token | cria licenciado |
-| GET  | `/v1/admin/licensees` | x-admin-token | lista licenciados |
-| POST | `/v1/admin/instances` | x-admin-token | cria instância (gera key 1x) |
-| GET  | `/v1/admin/instances` | x-admin-token | lista instâncias + telemetria |
-| POST | `/v1/admin/instances/:id/status` | x-admin-token | ativar/bloquear/suspender |
-| POST | `/v1/admin/instances/:id/rotate-key` | x-admin-token | re-emite a license key |
-| GET  | `/health` | — | liveness |
+| POST | `/v1/instances/heartbeat` | Bearer licenseKey | renova token + telemetria. Status efetivo = bloqueio admin OU inadimplência (sem desbloqueio em confiança vigente). |
+
+**Admin (staff NetX, header `x-admin-token`):**
+| Método | Rota | Função |
+|---|---|---|
+| POST/GET | `/v1/admin/licensees` | cria / lista licenciados |
+| GET/POST | `/v1/admin/licensees/:id` | detalhe / atualiza dados completos |
+| POST | `/v1/admin/hub-users` | cria login da central pro cliente |
+| POST/GET | `/v1/admin/instances` | cria instância (key 1x) / lista + telemetria |
+| POST | `/v1/admin/instances/:id/status` | ativar/bloquear/suspender |
+| POST | `/v1/admin/instances/:id/rotate-key` | re-emite a license key |
+| GET  | `/v1/admin/invoices?licenseeId=` | lista faturas |
+| POST | `/v1/admin/licensees/:id/generate-invoice` | gera fatura do mês sob demanda |
+| POST | `/v1/admin/invoices/:id/mark-paid` | baixa manual (PIX/CARD/MANUAL) |
+
+**Central do cliente (ISP, login e-mail+senha → Bearer JWT):**
+| Método | Rota | Função |
+|---|---|---|
+| POST | `/v1/portal/login` | login (e-mail+senha) → token |
+| GET  | `/v1/portal/me` | dados, instâncias, situação (em dia/atraso), cota de desbloqueio |
+| GET  | `/v1/portal/invoices` | minhas faturas |
+| POST | `/v1/portal/trust-unlock` | desbloquear em confiança (N dias, máx X por fatura) |
+| POST | `/v1/portal/pay` | iniciar pagamento (stub até EFI / Fase 3C) |
+
+| GET  | `/health` | liveness |
+
+## Faturamento
+
+- Fatura mensal automática (cron diário, gera no começo do mês): **pico de
+  contratos ativos no período × `pricePerContractCents`**.
+- Vencimento = `billingDay` do licenciado. Passou do vencimento + graça
+  (`LICENSE_GRACE_DAYS`) → `OVERDUE` → próximo heartbeat **bloqueia** (a menos
+  que haja desbloqueio em confiança vigente).
+- **Desbloqueio em confiança**: a central libera por `TRUST_UNLOCK_DAYS`,
+  no máximo `TRUST_UNLOCK_MAX_PER_INVOICE` por fatura em atraso.
+- Pagamento online (EFI) entra na Fase 3C; por ora o admin dá baixa manual.
 
 ## Teste de compatibilidade
 

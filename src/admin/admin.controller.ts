@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type { ZodSchema } from 'zod';
@@ -12,9 +13,12 @@ import type { ZodSchema } from 'zod';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import {
+  CreateHubUserSchema,
   CreateInstanceSchema,
-  CreateLicenseeSchema,
+  LicenseeDataSchema,
+  MarkPaidSchema,
   SetStatusSchema,
+  UpdateLicenseeSchema,
 } from './admin.dto';
 
 function parse<T>(schema: ZodSchema<T>, body: unknown): T {
@@ -35,12 +39,44 @@ export class AdminController {
 
   @Post('licensees')
   createLicensee(@Body() body: unknown) {
-    return this.admin.createLicensee(parse(CreateLicenseeSchema, body));
+    return this.admin.createLicensee(parse(LicenseeDataSchema, body));
   }
 
   @Get('licensees')
   listLicensees() {
     return this.admin.listLicensees();
+  }
+
+  @Get('licensees/:id')
+  getLicensee(@Param('id') id: string) {
+    return this.admin.getLicensee(id);
+  }
+
+  @Post('licensees/:id')
+  updateLicensee(@Param('id') id: string, @Body() body: unknown) {
+    return this.admin.updateLicensee(id, parse(UpdateLicenseeSchema, body));
+  }
+
+  // Usuários da central do cliente
+  @Post('hub-users')
+  createHubUser(@Body() body: unknown) {
+    return this.admin.createHubUser(parse(CreateHubUserSchema, body));
+  }
+
+  // Faturas
+  @Get('invoices')
+  listInvoices(@Query('licenseeId') licenseeId?: string) {
+    return this.admin.listInvoices(licenseeId);
+  }
+
+  @Post('licensees/:id/generate-invoice')
+  generateInvoice(@Param('id') id: string) {
+    return this.admin.generateInvoiceNow(id);
+  }
+
+  @Post('invoices/:id/mark-paid')
+  markPaid(@Param('id') id: string, @Body() body: unknown) {
+    return this.admin.markInvoicePaid(id, parse(MarkPaidSchema, body));
   }
 
   @Post('instances')

@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 
 import { generateLicenseKey, sha256Hex } from './common/hash';
+import { hashPassword } from './common/password';
 
 async function main() {
   const prisma = new PrismaClient();
@@ -19,6 +20,20 @@ async function main() {
         name: process.env.LICENSEE_NAME ?? 'Cliente de Teste',
         plan: 'per-contract',
         maxContracts: 0,
+        pricePerContractCents: Number(process.env.PRICE_PER_CONTRACT_CENTS ?? 0),
+        billingDay: 10,
+      },
+    });
+
+    // Usuário da central (login e-mail+senha) pra testar o portal.
+    const portalEmail = process.env.PORTAL_EMAIL ?? 'cliente@teste.local';
+    const portalPassword = process.env.PORTAL_PASSWORD ?? 'troque-esta-senha';
+    await prisma.hubUser.create({
+      data: {
+        licenseeId: licensee.id,
+        email: portalEmail.toLowerCase(),
+        name: 'Admin do Cliente',
+        passwordHash: hashPassword(portalPassword),
       },
     });
 
@@ -45,6 +60,10 @@ async function main() {
         '  NETX_HUB_URL=http://localhost:4000',
         '',
         `  (licenseeId=${licensee.id})`,
+        '',
+        'Central do cliente (POST /v1/portal/login):',
+        `  e-mail: ${portalEmail}`,
+        `  senha:  ${portalPassword}`,
         '',
         '⚠️  A license key acima NÃO é recuperável depois — anote agora.',
         '',

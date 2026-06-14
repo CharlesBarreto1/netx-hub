@@ -31,7 +31,7 @@ function parse<T>(schema: ZodSchema<T>, body: unknown): T {
   return r.data;
 }
 
-/** Painel/admin do Hub — staff NetX. Protegido por HUB_ADMIN_TOKEN. */
+/** Painel/admin do Hub — staff NetX. Protegido por login da equipe (Bearer JWT). */
 @UseGuards(AdminGuard)
 @Controller('admin')
 export class AdminController {

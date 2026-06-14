@@ -29,34 +29,43 @@ export interface PortalJwtPayload {
   exp: number;
 }
 
-function secret(): string {
-  const s = process.env.HUB_PORTAL_JWT_SECRET;
+export interface AdminJwtPayload {
+  sub: string; // hubAdminId
+  email: string;
+  kind: 'admin';
+  iat: number;
+  exp: number;
+}
+
+function requireSecret(envName: string): string {
+  const s = process.env[envName];
   if (!s || s.length < 16) {
-    throw new Error('HUB_PORTAL_JWT_SECRET ausente/curto (mín. 16 chars).');
+    throw new Error(`${envName} ausente/curto (mín. 16 chars).`);
   }
   return s;
 }
 
-export function signPortalJwt(
-  payload: Omit<PortalJwtPayload, 'iat' | 'exp'>,
-  ttlSeconds = 12 * 3600,
+function sign<T extends Record<string, unknown>>(
+  payload: T,
+  envName: string,
+  ttlSeconds: number,
 ): string {
   const now = Math.floor(Date.now() / 1000);
-  const full: PortalJwtPayload = { ...payload, iat: now, exp: now + ttlSeconds };
+  const full = { ...payload, iat: now, exp: now + ttlSeconds };
   const head = b64urlJson({ alg: 'HS256', typ: 'JWT' });
   const body = b64urlJson(full);
-  const sig = b64url(createHmac('sha256', secret()).update(`${head}.${body}`).digest());
+  const sig = b64url(createHmac('sha256', requireSecret(envName)).update(`${head}.${body}`).digest());
   return `${head}.${body}.${sig}`;
 }
 
-export function verifyPortalJwt(token: string): PortalJwtPayload | null {
+function verify<T extends { exp?: number }>(token: string, envName: string): T | null {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [head, body, sig] = parts;
-  const expected = createHmac('sha256', secret()).update(`${head}.${body}`).digest();
+  const expected = createHmac('sha256', requireSecret(envName)).update(`${head}.${body}`).digest();
   const got = fromB64url(sig);
   if (got.length !== expected.length || !timingSafeEqual(got, expected)) return null;
-  let payload: PortalJwtPayload;
+  let payload: T;
   try {
     payload = JSON.parse(fromB64url(body).toString('utf8'));
   } catch {
@@ -66,4 +75,24 @@ export function verifyPortalJwt(token: string): PortalJwtPayload | null {
     return null;
   }
   return payload;
+}
+
+export function signPortalJwt(
+  payload: Omit<PortalJwtPayload, 'iat' | 'exp'>,
+  ttlSeconds = 12 * 3600,
+): string {
+  return sign(payload, 'HUB_PORTAL_JWT_SECRET', ttlSeconds);
+}
+export function verifyPortalJwt(token: string): PortalJwtPayload | null {
+  return verify<PortalJwtPayload>(token, 'HUB_PORTAL_JWT_SECRET');
+}
+
+export function signAdminJwt(
+  payload: Omit<AdminJwtPayload, 'iat' | 'exp'>,
+  ttlSeconds = 12 * 3600,
+): string {
+  return sign(payload, 'HUB_ADMIN_JWT_SECRET', ttlSeconds);
+}
+export function verifyAdminJwt(token: string): AdminJwtPayload | null {
+  return verify<AdminJwtPayload>(token, 'HUB_ADMIN_JWT_SECRET');
 }

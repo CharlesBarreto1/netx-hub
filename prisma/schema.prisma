@@ -66,6 +66,20 @@ model Licensee {
   @@map("licensees")
 }
 
+/// Usuário da equipe NetX (acesso ao painel admin). Login e-mail+senha.
+/// Substitui o antigo HUB_ADMIN_TOKEN único.
+model HubAdmin {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String?
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("hub_admins")
+}
+
 /// Usuário da central do cliente (staff do ISP). Login e-mail+senha.
 model HubUser {
   id           String   @id @default(uuid())

@@ -2,7 +2,7 @@
 
 /**
  * Cliente HTTP do app web do Hub. Duas auths:
- *   - admin: header x-admin-token (guardado em localStorage após /admin/login)
+ *   - admin: Bearer JWT (login e-mail+senha da equipe NetX)
  *   - portal: Bearer JWT (guardado após /portal/login)
  * Base URL via NEXT_PUBLIC_HUB_API (default http://localhost:4000/v1).
  */
@@ -65,12 +65,18 @@ function safeJson(t: string): unknown {
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
+// Login da equipe NetX → Bearer JWT (guardado em adminToken).
 function adminHeaders(): Record<string, string> {
   const t = adminToken.get();
-  return t ? { 'x-admin-token': t } : {};
+  return t ? { authorization: `Bearer ${t}` } : {};
 }
 export const adminApi = {
-  ping: () => req('GET', '/admin/licensees', { headers: adminHeaders() }),
+  login: (email: string, password: string) =>
+    req<{ token: string; name: string | null }>('POST', '/admin/auth/login', {
+      body: { email, password },
+    }),
+  me: () => req('GET', '/admin/auth/me', { headers: adminHeaders() }),
+  ping: () => req('GET', '/admin/auth/me', { headers: adminHeaders() }),
   listLicensees: () => req<any[]>('GET', '/admin/licensees', { headers: adminHeaders() }),
   getLicensee: (id: string) => req<any>('GET', `/admin/licensees/${id}`, { headers: adminHeaders() }),
   createLicensee: (body: unknown) =>

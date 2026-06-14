@@ -16,7 +16,7 @@ NestJS 11 + Prisma 6 + PostgreSQL. Token assinado em **Ed25519 (EdDSA)**.
 
 ```bash
 npm install
-cp .env.example .env          # preencha DATABASE_URL, HUB_ADMIN_TOKEN
+cp .env.example .env          # preencha DATABASE_URL, HUB_ADMIN_JWT_SECRET, HUB_PORTAL_JWT_SECRET
 npm run keygen                # gera o par Ed25519
 #  → cole a PRIVADA em .env (LICENSE_PRIVATE_KEY_B64)
 #  → cole a PÚBLICA no NetX (packages/shared/src/licensing/public-key.ts)
@@ -32,7 +32,7 @@ npm run dev                   # sobe em :4000
 
 1. **Cadastrar licenciado** (a empresa/ISP):
    ```
-   POST /v1/admin/licensees   (header x-admin-token)
+   POST /v1/admin/licensees   (Bearer JWT da equipe)
    { "name": "NET Telecom", "plan": "per-contract", "maxContracts": 0 }
    ```
 2. **Provisionar a instância**: instale o NetX no cliente (o installer gera o
@@ -57,7 +57,7 @@ npm run dev                   # sobe em :4000
 |---|---|---|---|
 | POST | `/v1/instances/heartbeat` | Bearer licenseKey | renova token + telemetria. Status efetivo = bloqueio admin OU inadimplência (sem desbloqueio em confiança vigente). |
 
-**Admin (staff NetX, header `x-admin-token`):**
+**Admin (equipe NetX — login e-mail+senha → Bearer JWT):**
 | Método | Rota | Função |
 |---|---|---|
 | POST/GET | `/v1/admin/licensees` | cria / lista licenciados |
@@ -77,7 +77,7 @@ npm run dev                   # sobe em :4000
 | GET  | `/v1/portal/me` | dados, instâncias, situação (em dia/atraso), cota de desbloqueio |
 | GET  | `/v1/portal/invoices` | minhas faturas |
 | POST | `/v1/portal/trust-unlock` | desbloquear em confiança (N dias, máx X por fatura) |
-| POST | `/v1/portal/pay` | iniciar pagamento (stub até EFI / Fase 3C) |
+| POST | `/v1/portal/pay` | iniciar pagamento Pix (EFI) — retorna copia-e-cola + QR |
 
 | GET  | `/health` | liveness |
 
@@ -116,14 +116,26 @@ Prova que o token do Hub é aceito pelo verificador real do NetX:
 npm run test:signing
 ```
 
+## Web (painel admin + central + hotsite)
+
+App Next em `web/` (`npm run dev -p 4100`). `NEXT_PUBLIC_HUB_API` aponta pra
+API. Superfícies: `/` (hotsite/landing), `/admin` (equipe NetX, login
+e-mail+senha) e `/portal` (central do cliente). Deploy: ver `DEPLOY.md`.
+
+## Login da equipe (admin)
+
+E-mail+senha (scrypt + JWT). Crie o primeiro usuário:
+`ADMIN_EMAIL=.. ADMIN_PASSWORD=.. npm run create-admin`. Mais usuários pelo
+próprio painel. (Substituiu o antigo token único.)
+
+## Backup
+
+`deploy/backup/netx-hub-backup.sh` + systemd timer (diário): pg_dump validado,
+retenção, off-site opcional via rclone (`HUB_BACKUP_REMOTE`). Ver `DEPLOY.md`.
+
 ## Segurança
 
-- A **chave privada** assina tudo — vaze ela e dá pra forjar licença. Cofre só.
-- License keys são guardadas como **sha256** (a key em claro aparece 1x).
-- Admin é um token único (MVP). Evoluir pra usuários quando houver equipe.
-
-## Falta (próximos incrementos)
-
-- Painel web (Next) — hoje a operação é via REST/admin token.
-- Faturamento: fechar fatura mensal a partir do `heartbeat_logs` (pico/média de
-  contratos ativos no período × preço por contrato).
+- A **chave privada** de licença assina tudo — vaze ela e dá pra forjar
+  licença. Guarde em cofre, nunca no git.
+- License keys e senhas guardadas como hash (sha256 / scrypt).
+- JWTs com segredos próprios (`HUB_ADMIN_JWT_SECRET`, `HUB_PORTAL_JWT_SECRET`).

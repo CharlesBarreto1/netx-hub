@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "seed": "ts-node src/seed.ts",
+    "create-admin": "ts-node src/create-admin.ts",
     "keygen": "node scripts/keygen.mjs",
     "test:signing": "ts-node test/signing.e2e.ts"
   },

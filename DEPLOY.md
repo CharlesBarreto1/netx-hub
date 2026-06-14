@@ -67,9 +67,11 @@ Preencha no `.env` (mínimo pra subir):
 DATABASE_URL=postgresql://netxhub:TROQUE_ESTA_SENHA@localhost:5432/netxhub?schema=public
 PORT=4000
 LICENSE_PRIVATE_KEY_B64=<privada do keygen>
-HUB_ADMIN_TOKEN=<openssl rand -hex 24>
-HUB_PORTAL_JWT_SECRET=<openssl rand -hex 24>
+HUB_ADMIN_JWT_SECRET=<openssl rand -hex 24>     # login da equipe NetX
+HUB_PORTAL_JWT_SECRET=<openssl rand -hex 24>    # login da central do cliente
 HUB_PUBLIC_URL=https://hub.seu-dominio.com
+# Backup off-site (opcional): rclone remote, ex. b2:netxhub-bkp/
+HUB_BACKUP_REMOTE=
 # EFI (Pix) — opcional; deixe EFI_ENABLED=false até ter as credenciais
 EFI_ENABLED=false
 ```
@@ -118,11 +120,30 @@ sudo apt install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d hub.seu-dominio.com
 ```
 
-## 7. Primeiro acesso
+## 7. Primeiro acesso (login da equipe)
 
-- Painel admin: `https://hub.seu-dominio.com/admin` → cole o `HUB_ADMIN_TOKEN`.
-- Cadastre o primeiro cliente, vincule a instância, crie o acesso da central.
-- (Opcional) `npm run seed` cria um cliente + login de teste.
+O painel admin usa login e-mail+senha. Crie o PRIMEIRO usuário:
+```bash
+cd /opt/netx-hub
+sudo -u netxhub bash -c 'set -a; . /etc/netx-hub/.env; set +a; \
+  ADMIN_EMAIL=voce@netx.com.br ADMIN_PASSWORD="SenhaForte123" npm run create-admin'
+```
+- Acesse `https://hub.seu-dominio.com/` (hotsite) → "Equipe NetX" ou `/admin`.
+- Entre com o e-mail/senha. Cadastre o primeiro cliente, vincule a instância,
+  crie o acesso da central. Pode criar mais usuários admin pelo próprio painel.
+
+## 8. Backup automático (Postgres)
+
+```bash
+sudo cp /opt/netx-hub/deploy/backup/netx-hub-backup.service /etc/systemd/system/
+sudo cp /opt/netx-hub/deploy/backup/netx-hub-backup.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now netx-hub-backup.timer
+# Testar agora: sudo systemctl start netx-hub-backup.service ; journalctl -u netx-hub-backup
+```
+Dump diário (03:30) em `/var/backups/netx-hub/auto`, validado com `pg_restore
+--list`, retenção `BACKUP_RETENTION_DAYS` (30). Off-site opcional: configure
+`rclone` (`rclone config`) e `HUB_BACKUP_REMOTE` no `.env`.
 
 ## Atualizar versão
 

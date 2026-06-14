@@ -66,6 +66,23 @@ model Licensee {
   @@map("licensees")
 }
 
+/// Artigo da wiki interna (base de conhecimento da equipe NetX). Conteúdo em
+/// markdown, editável pelo painel admin.
+model WikiArticle {
+  id             String   @id @default(uuid())
+  slug           String   @unique
+  title          String
+  category       String   @default("Geral")
+  content        String   @db.Text // markdown
+  orderIndex     Int      @default(0) @map("order_index")
+  updatedByEmail String?  @map("updated_by_email")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([category, orderIndex])
+  @@map("wiki_articles")
+}
+
 /// Usuário da equipe NetX (acesso ao painel admin). Login e-mail+senha.
 /// Substitui o antigo HUB_ADMIN_TOKEN único.
 model HubAdmin {

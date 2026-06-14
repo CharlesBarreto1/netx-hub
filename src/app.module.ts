@@ -10,6 +10,7 @@ import { PaymentModule } from './payments/payment.module';
 import { PortalModule } from './portal/portal.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SigningModule } from './signing/signing.module';
+import { WikiModule } from './wiki/wiki.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { SigningModule } from './signing/signing.module';
     InstancesModule,
     AdminModule,
     PortalModule,
+    WikiModule,
   ],
   controllers: [HealthController],
 })

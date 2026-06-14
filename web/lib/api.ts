@@ -99,6 +99,13 @@ export const adminApi = {
     req<any>('POST', `/admin/licensees/${licenseeId}/generate-invoice`, { headers: adminHeaders() }),
   markPaid: (invoiceId: string, body: unknown) =>
     req<any>('POST', `/admin/invoices/${invoiceId}/mark-paid`, { body, headers: adminHeaders() }),
+  // Wiki
+  wikiList: () => req<any[]>('GET', '/admin/wiki', { headers: adminHeaders() }),
+  wikiGet: (slug: string) => req<any>('GET', `/admin/wiki/${slug}`, { headers: adminHeaders() }),
+  wikiCreate: (body: unknown) => req<any>('POST', '/admin/wiki', { body, headers: adminHeaders() }),
+  wikiUpdate: (id: string, body: unknown) =>
+    req<any>('POST', `/admin/wiki/${id}`, { body, headers: adminHeaders() }),
+  wikiRemove: (id: string) => req<void>('DELETE', `/admin/wiki/${id}`, { headers: adminHeaders() }),
 };
 
 // ── Portal ──────────────────────────────────────────────────────────────────

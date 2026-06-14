@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { adminApi, adminToken, HubApiError } from '@/lib/api';
+import { AdminNav } from '@/components/AdminNav';
 
 export default function AdminHome() {
   const router = useRouter();
@@ -35,25 +36,15 @@ export default function AdminHome() {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
+      <AdminNav />
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold">Clientes (licenciados)</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setCreating(true)}
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
-          >
-            Novo cliente
-          </button>
-          <button
-            onClick={() => {
-              adminToken.clear();
-              router.replace('/admin/login');
-            }}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-          >
-            Sair
-          </button>
-        </div>
+        <button
+          onClick={() => setCreating(true)}
+          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
+        >
+          Novo cliente
+        </button>
       </header>
 
       {err && <p className="text-sm text-red-600">{err}</p>}

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -105,12 +106,17 @@ export default function PortalHome() {
           <h1 className="text-xl font-bold">{lic.name}</h1>
           <p className="text-sm text-slate-500">Central do cliente NetX</p>
         </div>
-        <button
-          onClick={() => { portalToken.clear(); router.replace('/portal/login'); }}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-        >
-          Sair
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/portal/ajuda" className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+            Central de ajuda
+          </Link>
+          <button
+            onClick={() => { portalToken.clear(); router.replace('/portal/login'); }}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          >
+            Sair
+          </button>
+        </div>
       </header>
 
       {msg && <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{msg}</p>}

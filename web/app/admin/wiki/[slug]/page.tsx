@@ -19,6 +19,7 @@ export default function WikiArticlePage() {
   // form
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
+  const [audience, setAudience] = useState<'INTERNAL' | 'CLIENT'>('INTERNAL');
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -28,6 +29,7 @@ export default function WikiArticlePage() {
       setA(art);
       setTitle(art.title);
       setCategory(art.category);
+      setAudience(art.audience);
       setContent(art.content);
     } catch (e) {
       if (e instanceof HubApiError && e.status === 401) router.replace('/admin/login');
@@ -43,7 +45,7 @@ export default function WikiArticlePage() {
   async function save() {
     setSaving(true);
     try {
-      await adminApi.wikiUpdate(a.id, { title, category, content });
+      await adminApi.wikiUpdate(a.id, { title, category, audience, content });
       setEditing(false);
       await load();
     } finally {
@@ -67,8 +69,14 @@ export default function WikiArticlePage() {
       ) : editing ? (
         <div className="mt-3 flex flex-col gap-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="sm:col-span-2"><Field label="Título"><input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} /></Field></div>
+            <Field label="Título"><input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} /></Field>
             <Field label="Categoria"><input value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls} /></Field>
+            <Field label="Público">
+              <select value={audience} onChange={(e) => setAudience(e.target.value as 'INTERNAL' | 'CLIENT')} className={inputCls}>
+                <option value="INTERNAL">Interno (equipe NetX)</option>
+                <option value="CLIENT">Cliente (central de ajuda)</option>
+              </select>
+            </Field>
           </div>
           <Field label="Conteúdo (markdown)">
             <textarea value={content} onChange={(e) => setContent(e.target.value)} className={`${inputCls} h-96 font-mono text-xs`} />

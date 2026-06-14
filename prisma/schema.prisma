@@ -66,20 +66,27 @@ model Licensee {
   @@map("licensees")
 }
 
-/// Artigo da wiki interna (base de conhecimento da equipe NetX). Conteúdo em
-/// markdown, editável pelo painel admin.
-model WikiArticle {
-  id             String   @id @default(uuid())
-  slug           String   @unique
-  title          String
-  category       String   @default("Geral")
-  content        String   @db.Text // markdown
-  orderIndex     Int      @default(0) @map("order_index")
-  updatedByEmail String?  @map("updated_by_email")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+/// Público-alvo de um artigo da wiki.
+enum WikiAudience {
+  INTERNAL // equipe NetX (painel admin)
+  CLIENT   // o ISP (central de ajuda no portal)
+}
 
-  @@index([category, orderIndex])
+/// Artigo de wiki. Editável pelo painel admin. `audience` decide onde aparece:
+/// INTERNAL (só admin) ou CLIENT (central de ajuda do portal, read-only).
+model WikiArticle {
+  id             String       @id @default(uuid())
+  slug           String       @unique
+  title          String
+  category       String       @default("Geral")
+  audience       WikiAudience @default(INTERNAL)
+  content        String       @db.Text // markdown
+  orderIndex     Int          @default(0) @map("order_index")
+  updatedByEmail String?      @map("updated_by_email")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([audience, category, orderIndex])
   @@map("wiki_articles")
 }
 

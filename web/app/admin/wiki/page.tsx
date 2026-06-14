@@ -71,8 +71,11 @@ export default function WikiList() {
               <ul className="overflow-hidden rounded-lg border border-slate-200 bg-white">
                 {items.map((a) => (
                   <li key={a.id} className="border-b border-slate-100 last:border-0">
-                    <Link href={`/admin/wiki/${a.slug}`} className="block px-4 py-3 hover:bg-slate-50">
+                    <Link href={`/admin/wiki/${a.slug}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
                       <span className="font-medium text-slate-800">{a.title}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${a.audience === 'CLIENT' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {a.audience === 'CLIENT' ? 'Cliente' : 'Interno'}
+                      </span>
                     </Link>
                   </li>
                 ))}

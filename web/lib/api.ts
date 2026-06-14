@@ -121,6 +121,9 @@ export const portalApi = {
   trustUnlock: () => req<any>('POST', '/portal/trust-unlock', { headers: portalHeaders() }),
   pay: (invoiceId: string, method: 'PIX' | 'CARD') =>
     req<any>('POST', '/portal/pay', { body: { invoiceId, method }, headers: portalHeaders() }),
+  // Central de ajuda (somente leitura)
+  wikiList: () => req<any[]>('GET', '/portal/wiki', { headers: portalHeaders() }),
+  wikiGet: (slug: string) => req<any>('GET', `/portal/wiki/${slug}`, { headers: portalHeaders() }),
 };
 
 // ── Helpers de formatação ─────────────────────────────────────────────────────

@@ -3,10 +3,13 @@
  * vez quando a tabela está vazia (WikiService.onModuleInit). Depois é editável
  * pelo painel — re-seed NÃO sobrescreve edições.
  */
+export type WikiAudience = 'INTERNAL' | 'CLIENT';
+
 export interface SeedArticle {
   slug: string;
   title: string;
   category: string;
+  audience: WikiAudience;
   orderIndex: number;
   content: string;
 }
@@ -16,6 +19,7 @@ export const WIKI_SEED: SeedArticle[] = [
     slug: 'visao-geral',
     title: 'Visão geral do Hub',
     category: 'Início',
+    audience: 'INTERNAL',
     orderIndex: 1,
     content: `# Visão geral do NetX Hub
 
@@ -41,6 +45,7 @@ O Hub é a plataforma da **NetX (nós)** para licenciar e cobrar os provedores
     slug: 'cadastrar-cliente',
     title: 'Cadastrar e provisionar um cliente',
     category: 'Operação',
+    audience: 'INTERNAL',
     orderIndex: 1,
     content: `# Cadastrar e provisionar um cliente
 
@@ -69,6 +74,7 @@ ativos, último contato).`,
     slug: 'faturamento',
     title: 'Faturamento e cobrança',
     category: 'Financeiro',
+    audience: 'INTERNAL',
     orderIndex: 1,
     content: `# Faturamento e cobrança
 
@@ -91,6 +97,7 @@ ativos, último contato).`,
     slug: 'bloqueio-desbloqueio',
     title: 'Bloqueio e desbloqueio',
     category: 'Financeiro',
+    audience: 'INTERNAL',
     orderIndex: 2,
     content: `# Bloqueio e desbloqueio
 
@@ -116,6 +123,7 @@ dele continuam funcionando — nunca derrubamos a rede por licença.`,
     slug: 'pagamento-pix-efi',
     title: 'Pagamento Pix (EFI)',
     category: 'Financeiro',
+    audience: 'INTERNAL',
     orderIndex: 3,
     content: `# Pagamento Pix (EFI)
 
@@ -149,6 +157,7 @@ Com \`EFI_ENABLED=false\`, o "Pagar" orienta pagamento por fora + baixa manual.`
     slug: 'backup',
     title: 'Backup e restauração',
     category: 'Operação',
+    audience: 'INTERNAL',
     orderIndex: 2,
     content: `# Backup e restauração
 
@@ -174,6 +183,7 @@ pg_restore --clean --if-exists -d "$DATABASE_URL" /var/backups/netx-hub/auto/net
     slug: 'chaves-licenca',
     title: 'Chaves de licença (segurança)',
     category: 'Operação',
+    audience: 'INTERNAL',
     orderIndex: 3,
     content: `# Chaves de licença
 
@@ -194,6 +204,7 @@ O Hub assina tokens com uma **chave privada Ed25519**. O NetX valida com a
     slug: 'troubleshooting',
     title: 'Solução de problemas',
     category: 'Suporte',
+    audience: 'INTERNAL',
     orderIndex: 1,
     content: `# Solução de problemas
 
@@ -215,5 +226,151 @@ O Hub assina tokens com uma **chave privada Ed25519**. O NetX valida com a
 ### "Licença inválida" no cliente
 - A chave pública embarcada no NetX precisa casar com a privada do Hub. Se
   rotacionou a chave, rode \`sudo netx-update\` no cliente.`,
+  },
+
+  // ===========================================================================
+  // ARTIGOS DO CLIENTE (central de ajuda no portal — audience CLIENT)
+  // Documentação do produto NetX para o ISP que usa o sistema.
+  // ===========================================================================
+  {
+    slug: 'cliente-bem-vindo',
+    title: 'Bem-vindo ao NetX',
+    category: 'Começando',
+    audience: 'CLIENT',
+    orderIndex: 1,
+    content: `# Bem-vindo ao NetX
+
+O NetX é a plataforma que gerencia o seu provedor de internet de ponta a ponta:
+clientes, contratos, rede (RADIUS/PPPoE, OLT/ONT), financeiro e estoque — tudo
+num só sistema, rodando na sua infraestrutura.
+
+Esta central é o seu canal com a **NetX**: aqui você acompanha sua licença, suas
+faturas e encontra ajuda para usar o sistema.
+
+## O que você consegue fazer aqui na central
+
+- Ver a **situação da sua licença** (em dia / em atraso).
+- Acompanhar e **pagar suas faturas** (Pix).
+- **Desbloquear em confiança** se ficar bloqueado por atraso, enquanto regulariza.
+- Consultar esta **central de ajuda**.
+
+> Dúvidas que não estão aqui? Fale com o suporte NetX (artigo "Suporte e contato").`,
+  },
+  {
+    slug: 'cliente-primeiros-passos',
+    title: 'Primeiros passos no sistema',
+    category: 'Começando',
+    audience: 'CLIENT',
+    orderIndex: 2,
+    content: `# Primeiros passos no NetX
+
+1. **Acesse o painel** do NetX (o endereço da sua instalação) com o usuário
+   admin criado na instalação.
+2. **Configure sua operação** em Configurações: país, moeda, dados da empresa.
+3. **Cadastre seus planos** de internet (velocidade e preço).
+4. **Cadastre o primeiro cliente** e crie um **contrato** para ele.
+5. **Ative o cliente** (provisionamento) — veja o artigo específico.
+
+Dica: o painel tem busca rápida (atalho no topo) para achar cliente, contrato ou
+ordem de serviço sem navegar por menus.`,
+  },
+  {
+    slug: 'cliente-clientes-contratos',
+    title: 'Clientes e contratos',
+    category: 'Uso diário',
+    audience: 'CLIENT',
+    orderIndex: 1,
+    content: `# Clientes e contratos
+
+- **Cliente** é a pessoa/empresa (PF/PJ). Um cliente pode ter vários contratos.
+- **Contrato** liga o cliente a um **plano**, define a forma de autenticação
+  (PPPoE é o padrão), o vencimento e o endereço de instalação.
+- Ao criar o contrato, ele nasce em **Aguardando instalação**; vira **Ativo**
+  quando o cliente é provisionado em campo.
+
+## Faturas dos seus assinantes
+
+O NetX gera as **mensalidades** dos seus assinantes automaticamente e marca as
+vencidas. O pagamento pode suspender/reativar o contrato conforme as regras do
+seu plano (dias de tolerância).`,
+  },
+  {
+    slug: 'cliente-ativar-assinante',
+    title: 'Ativar (provisionar) um assinante',
+    category: 'Uso diário',
+    audience: 'CLIENT',
+    orderIndex: 2,
+    content: `# Ativar um assinante
+
+Quando o técnico instala o cliente em campo:
+
+1. Abra o contrato em **Aguardando instalação**.
+2. Informe os dados da ONT (número de série) e a posição na rede, se aplicável.
+3. O NetX provisiona automaticamente: autoriza na OLT (quando integrado),
+   cria a sessão PPPoE no RADIUS e aplica a configuração (Wi-Fi, VLAN).
+4. O contrato passa a **Ativo** e o assinante navega.
+
+> Em rede neutra (ex.: Ufinet), a ativação dispara a ordem no orquestrador e
+> aguarda a confirmação da ONT física.`,
+  },
+  {
+    slug: 'cliente-licenca-central',
+    title: 'Sua licença e a central',
+    category: 'Licença e cobrança',
+    audience: 'CLIENT',
+    orderIndex: 1,
+    content: `# Sua licença NetX
+
+O seu NetX é licenciado pela NetX. O sistema confirma a licença automaticamente
+todo dia — você não precisa fazer nada enquanto estiver tudo em dia.
+
+## Se o painel bloquear
+
+Se uma fatura vencer, o **painel de gestão** do NetX pode ser bloqueado até a
+regularização. Importante: **a internet dos seus assinantes NÃO para** — apenas
+o painel administrativo fica indisponível.
+
+O que fazer:
+1. Acesse esta central e veja suas **faturas**.
+2. **Pague** a fatura em aberto (Pix) — a liberação é automática.
+3. Precisa de um prazo? Use **"Desbloquear em confiança"**: libera o painel por
+   alguns dias enquanto você regulariza (limitado por fatura).
+
+> A baixa do Pix é automática; o painel volta sozinho em seguida.`,
+  },
+  {
+    slug: 'cliente-pagar-fatura',
+    title: 'Pagar uma fatura',
+    category: 'Licença e cobrança',
+    audience: 'CLIENT',
+    orderIndex: 2,
+    content: `# Pagar uma fatura
+
+1. Na central, abra **Faturas**.
+2. Na fatura em aberto, clique em **Pagar**.
+3. Aparece um **Pix** (QR Code + copia-e-cola). Pague pelo app do seu banco.
+4. A confirmação é **automática** — assim que o banco confirma, a fatura fica
+   como paga e qualquer bloqueio é liberado no próximo ciclo.
+
+Pagou e não atualizou na hora? O Pix pode levar alguns minutos. Se persistir,
+fale com o suporte NetX com o comprovante.`,
+  },
+  {
+    slug: 'cliente-suporte',
+    title: 'Suporte e contato',
+    category: 'Ajuda',
+    audience: 'CLIENT',
+    orderIndex: 1,
+    content: `# Suporte e contato
+
+Precisa de ajuda com o NetX?
+
+- Procure primeiro nesta **central de ajuda** — a maioria das dúvidas do dia a
+  dia está aqui.
+- Para suporte técnico ou comercial, fale com a equipe NetX pelos canais
+  informados no seu contrato.
+
+Ao abrir um chamado, tenha em mãos: o que tentou fazer, a mensagem de erro (se
+houver) e, para questões de cobrança, o número/competência da fatura.`,
   },
 ];

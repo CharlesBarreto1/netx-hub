@@ -3,12 +3,14 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
 
+import { WikiService } from '../wiki/wiki.service';
 import { PortalAuthGuard, type PortalRequest } from './portal-auth.guard';
 import { PortalService } from './portal.service';
 
@@ -21,7 +23,10 @@ const PaySchema = z.object({
 /** Central do cliente — /v1/portal. Login público; resto exige Bearer JWT. */
 @Controller('portal')
 export class PortalController {
-  constructor(private readonly portal: PortalService) {}
+  constructor(
+    private readonly portal: PortalService,
+    private readonly wiki: WikiService,
+  ) {}
 
   @Post('login')
   login(@Body() body: unknown) {
@@ -54,5 +59,18 @@ export class PortalController {
     const r = PaySchema.safeParse(body);
     if (!r.success) throw new BadRequestException('invoiceId inválido');
     return this.portal.pay(req.portalUser!.lid, r.data.invoiceId, r.data.method);
+  }
+
+  // ── Central de ajuda (wiki do cliente — só artigos CLIENT, read-only) ─────
+  @UseGuards(PortalAuthGuard)
+  @Get('wiki')
+  wikiList() {
+    return this.wiki.list('CLIENT');
+  }
+
+  @UseGuards(PortalAuthGuard)
+  @Get('wiki/:slug')
+  wikiArticle(@Param('slug') slug: string) {
+    return this.wiki.getBySlug(slug, 'CLIENT');
   }
 }

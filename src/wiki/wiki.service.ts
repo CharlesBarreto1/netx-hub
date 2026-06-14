@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import type { WikiAudience } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { WIKI_SEED } from './wiki-seed';
@@ -29,6 +30,7 @@ export class WikiService implements OnModuleInit {
           slug: a.slug,
           title: a.title,
           category: a.category,
+          audience: a.audience,
           content: a.content,
           orderIndex: a.orderIndex,
         })),
@@ -42,20 +44,28 @@ export class WikiService implements OnModuleInit {
   }
 
   /** Lista enxuta (sem o conteúdo) pra montar o índice por categoria. */
-  list() {
+  list(audience?: WikiAudience) {
     return this.prisma.wikiArticle.findMany({
+      where: audience ? { audience } : {},
       orderBy: [{ category: 'asc' }, { orderIndex: 'asc' }, { title: 'asc' }],
-      select: { id: true, slug: true, title: true, category: true, updatedAt: true },
+      select: { id: true, slug: true, title: true, category: true, audience: true, updatedAt: true },
     });
   }
 
-  async getBySlug(slug: string) {
+  /** Busca por slug. Se `audience` vier, exige que o artigo seja daquele público
+   *  (o portal não pode ler artigo interno mesmo sabendo o slug). */
+  async getBySlug(slug: string, audience?: WikiAudience) {
     const a = await this.prisma.wikiArticle.findUnique({ where: { slug } });
-    if (!a) throw new NotFoundException('Artigo não encontrado');
+    if (!a || (audience && a.audience !== audience)) {
+      throw new NotFoundException('Artigo não encontrado');
+    }
     return a;
   }
 
-  async create(input: { title: string; category?: string; content: string }, byEmail?: string) {
+  async create(
+    input: { title: string; category?: string; content: string; audience?: WikiAudience },
+    byEmail?: string,
+  ) {
     const base = slugify(input.title) || 'artigo';
     let slug = base;
     // Garante slug único.
@@ -67,6 +77,7 @@ export class WikiService implements OnModuleInit {
         slug,
         title: input.title,
         category: input.category?.trim() || 'Geral',
+        audience: input.audience ?? 'INTERNAL',
         content: input.content,
         updatedByEmail: byEmail ?? null,
       },
@@ -75,7 +86,13 @@ export class WikiService implements OnModuleInit {
 
   async update(
     id: string,
-    input: { title?: string; category?: string; content?: string; orderIndex?: number },
+    input: {
+      title?: string;
+      category?: string;
+      content?: string;
+      orderIndex?: number;
+      audience?: WikiAudience;
+    },
     byEmail?: string,
   ) {
     const exists = await this.prisma.wikiArticle.findUnique({ where: { id } });
@@ -85,6 +102,7 @@ export class WikiService implements OnModuleInit {
       data: {
         title: input.title,
         category: input.category?.trim() || undefined,
+        audience: input.audience,
         content: input.content,
         orderIndex: input.orderIndex,
         updatedByEmail: byEmail ?? exists.updatedByEmail,
